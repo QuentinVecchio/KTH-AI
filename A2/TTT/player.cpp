@@ -36,7 +36,7 @@ GameState Player::play(const GameState &pState,const Deadline &pDue)
     std::cerr << "Analyze possibilities" << std::endl;
     for(unsigned i=0;i<lNextStates.size();++i) {
         //int v = this->minMax(lNextStates[i], pState.getNextPlayer(), 3);
-        int v = this->alphaBeta(lNextStates[i], pState.getNextPlayer(), 15, MINIMUM, MAXIMUM);
+        int v = this->alphaBeta(lNextStates[i], pState.getNextPlayer(), 15, bestEvaluation, MAXIMUM);
         if(v>bestEvaluation) {
             bestEvaluation = v;
             indexBestMove = i;
