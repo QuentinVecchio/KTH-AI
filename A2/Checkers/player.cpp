@@ -248,11 +248,11 @@ GameState Player::play(const GameState &pState,const Deadline &pDue)
     this->states[CELL_RED].clear();
     this->states[CELL_WHITE].clear();
 
-    unsigned depth = 7;
+    unsigned depth = 6;
 
-    /*if(countPieces(pState) <= 4) {
+    if(countPieces(pState) <= 4) {
         depth = 8;
-    }*/
+    }
 
     //POSSIBLE MOVES
     std::vector<GameState> lNextStates;
@@ -266,13 +266,12 @@ GameState Player::play(const GameState &pState,const Deadline &pDue)
 
     double alpha = double(MINIMUM);
     double beta = double(MAXIMUM);
-    double best = double(MAXIMUM);
     GameState bestMove;
     for(unsigned i = 0; i < lNextStates.size(); ++i) {
-        double tmp = alphaBeta(lNextStates[i], pState.getNextPlayer(), depth, best, beta, false);
-        if(tmp < best) {
+        double tmp = alphaBeta(lNextStates[i], pState.getNextPlayer(), depth, alpha, beta, false);
+        if(tmp > alpha) {
             bestMove = lNextStates[i];
-            best = tmp;
+            alpha = tmp;
         }
     }
 
