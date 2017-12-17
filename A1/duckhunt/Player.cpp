@@ -67,23 +67,6 @@ Action Player::shoot(const GameState &pState, const Deadline &pDue)
     /*
     * ROUND 0
     */
-    /*
-    * LEARNING TURN
-    */
-    if(this->nbTurns == MIN_TURNS) {
-        std::cerr << "LEARNING" << std::endl;
-        this->hmmShoot = new HMM*[pState.getNumBirds()];
-        for(unsigned i = 0; i < pState.getNumBirds(); ++i) {
-            this->hmmShoot[i] = new HMM(NBSTATES, NBOBSERVATIONS);
-            int* movements = new int[pState.getBird(i).getSeqLength()];
-            for(unsigned j = 0; j < pState.getBird(i).getSeqLength(); ++j) {
-                movements[j] = pState.getBird(i).getObservation(j);
-            }
-            this->hmmShoot[i]->learn(movements, pState.getBird(i).getSeqLength(), MAX_ITER);
-            delete[] movements;
-        }
-        std::cerr << "END LEARNING" << std::endl;
-    }
 
     /*
     * SHOOT TURNS

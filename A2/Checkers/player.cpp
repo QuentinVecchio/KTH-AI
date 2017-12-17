@@ -7,25 +7,15 @@
 #include <vector>
 #include <algorithm>
 
-#define MINIMUM std::numeric_limits<double>::min()
+#define MINIMUM -100000
 #define MAXIMUM std::numeric_limits<double>::max()
 
 namespace checkers
 {
 
-Player::Player() {
-    this->nbTurns = 0;
-    this->history = std::vector< std::map<std::string, double> > (10);
-    for(unsigned i = 0; i < this->history.size(); ++i) {
-        this->history[i] = std::map<std::string, double>();
-    }
-    this->states[CELL_RED] = std::map<std::string, double>();
-    this->states[CELL_WHITE] = std::map<std::string, double>();
-}
-
 unsigned Player::countPieces(const GameState &pState) {
     unsigned sum = 0;
-    std::string grid = this->boardToString(pState);
+    std::string grid = pState.toMessage();
     for(unsigned i = 0; i < grid.size(); ++i) {
         if(grid[i] == 'r' || grid[i] == 'R' || grid[i] == 'w' || grid[i] == 'W')
             ++sum;
@@ -33,7 +23,30 @@ unsigned Player::countPieces(const GameState &pState) {
     return sum;
 }
 
+std::string Player::boardToString(const GameState & pState) const {
+    std::stringstream ss;
+    for(unsigned i=0;i<pState.cSquares;i++) {
+        ss << SIMPLE_TEXT[pState.at(i)];
+    }
+
+    return ss.str();
+}
+
+std::string Player::boardToMessage(const GameState & pState) const {
+    std::stringstream ss;
+    for(unsigned i=0;i<pState.cSquares;i++) {
+        ss << SIMPLE_TEXT[pState.at(i)];
+    }
+    ss << pState.getNextPlayer();
+
+    return ss.str();
+}
+
+
+
 double Player::computeHeuristic(const GameState &pState, const uint8_t & player, bool currentPlayer) {
+    if(pState.isDraw())
+        return -1000;
     if(pState.isRedWin() || pState.isWhiteWin()) {
         if(currentPlayer) {
             return 1000;
@@ -45,46 +58,147 @@ double Player::computeHeuristic(const GameState &pState, const uint8_t & player,
 
     double nbRed = 0;
     double nbWhite = 0;
-    std::string grid = this->boardToString(pState);
 
-    if(!currentPlayer) {
-        
-        for(unsigned i = 0; i < grid.size(); ++i) {
-            if(grid[i] == 'r' || grid[i] == 'R')
-                ++nbRed;
-            else if(grid[i] == 'w' || grid[i] == 'W')
-                ++nbWhite;
+    if(currentPlayer) {
+        for(int i=0;i<8;i++) {
+            for(int j=0;j<8;j++) {
+                if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'r')
+                    nbRed += i;
+                else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')
+                    nbRed += i+ 4;
+                else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'w')
+                    nbWhite += 7 - i;
+                else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')
+                    nbWhite += 7 - i + 4;
+
+                if(i>0 && j>0 && MESSAGE_SYMBOLS[pState.at(i-1, j-1)] == '.') {
+                    if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')
+                        nbRed++;
+                    else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')
+                        nbWhite++;
+                }
+                if(i>0 && j<7 && MESSAGE_SYMBOLS[pState.at(i-1, j+1)] == '.') {
+                    if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')
+                        nbRed++;
+                    else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')
+                        nbWhite++;
+                }
+                if(i<7 && j>0 && MESSAGE_SYMBOLS[pState.at(i+1, j-1)] == '.') {
+                    if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')
+                        nbRed++;
+                    else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')
+                        nbWhite++;
+                }
+                if(i<7 && j<7 && MESSAGE_SYMBOLS[pState.at(i+1, j+1)] == '.') {
+                    if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')
+                        nbRed++;
+                    else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')
+                        nbWhite++;
+                }
+
+                if((MESSAGE_SYMBOLS[pState.at(i, j)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'R') && (j==0 || j == 7)){
+                    nbRed++;
+                } else if((MESSAGE_SYMBOLS[pState.at(i, j)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, j)] == 'W') && (j==0 || j == 7)) {
+                    nbWhite++;
+                }
+
+                /*
+                // Defends
+                if(i<=1 && (MESSAGE_SYMBOLS[pState.at(i, j)] == 'r'||MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')) {
+                    nbRed++;
+                } else if(i>=6 && (MESSAGE_SYMBOLS[pState.at(i, j)] == 'w'||MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')) {
+                    nbWhite++;
+                }
+
+                // Attack
+                if(i<=2 && (MESSAGE_SYMBOLS[pState.at(i, j)] == 'w'||MESSAGE_SYMBOLS[pState.at(i, i)] == 'W')) {
+                    nbWhite--;
+                } else if(i>=5 && (MESSAGE_SYMBOLS[pState.at(i, j)] == 'r'||MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')) {
+                    nbRed--;
+                }
+                */
+
+                // Diagonal
+                
+                /*if(i<=1 && MESSAGE_SYMBOLS[pState.at(i, j)] == '.') {
+                    nbRed++;
+                } else if(i>=6 && MESSAGE_SYMBOLS[pState.at(i, j)] == '.') {
+                    nbWhite++;
+                }*/
+            }
+            if(MESSAGE_SYMBOLS[pState.at(i, i)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, i)] == 'R'){
+                nbRed++;
+            } else if(MESSAGE_SYMBOLS[pState.at(i, i)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, i)] == 'W') {
+                nbWhite++;
+            }
+            if(MESSAGE_SYMBOLS[pState.at(i, 7-i)] == 'r' || MESSAGE_SYMBOLS[pState.at(i, 7-i)] == 'R'){
+                nbRed++;
+            } else if(MESSAGE_SYMBOLS[pState.at(i, 7-i)] == 'w' || MESSAGE_SYMBOLS[pState.at(i, 7-i)] == 'W') {
+                nbWhite++;
+            }
         }
-        if(player == CELL_RED)
-            return nbRed/nbWhite;
-        else
-            return nbWhite/nbRed;
-    } else {
-        for(unsigned i = 0; i < grid.size(); ++i) {
-            if(grid[i] == 'r')
-                ++nbRed;
-            else if(grid[i] == 'R')
-                nbRed += 2;
-            else if(grid[i] == 'w')
-                ++nbWhite;
-            else if(grid[i] == 'W')
-                nbWhite += 2;
+
+        // Oreo
+        if((MESSAGE_SYMBOLS[pState.at(6, 3)] == 'w' || MESSAGE_SYMBOLS[pState.at(6, 3)] == 'W') && 
+            (MESSAGE_SYMBOLS[pState.at(7, 2)] == 'w' || MESSAGE_SYMBOLS[pState.at(7, 2)] == 'W') &&
+            (MESSAGE_SYMBOLS[pState.at(7, 4)] == 'w' || MESSAGE_SYMBOLS[pState.at(7, 4)] == 'W')) {
+            nbWhite++;
         }
-        if(player == CELL_RED)
-            return nbRed/nbWhite;
-        else
-            return nbWhite/nbRed;
+        if((MESSAGE_SYMBOLS[pState.at(0, 3)] == 'r' || MESSAGE_SYMBOLS[pState.at(0, 3)] == 'R') && 
+            (MESSAGE_SYMBOLS[pState.at(0, 5)] == 'r' || MESSAGE_SYMBOLS[pState.at(0, 5)] == 'R') &&
+            (MESSAGE_SYMBOLS[pState.at(1, 4)] == 'r' || MESSAGE_SYMBOLS[pState.at(1, 4)] == 'R')) {
+            nbRed++;
+        }
+
+        // Triangle
+        if((MESSAGE_SYMBOLS[pState.at(6, 5)] == 'w' || MESSAGE_SYMBOLS[pState.at(6, 5)] == 'W') && 
+            (MESSAGE_SYMBOLS[pState.at(7, 4)] == 'w' || MESSAGE_SYMBOLS[pState.at(7, 4)] == 'W') &&
+            (MESSAGE_SYMBOLS[pState.at(7, 6)] == 'w' || MESSAGE_SYMBOLS[pState.at(7, 6)] == 'W')) {
+            nbWhite++;
+        }
+        if((MESSAGE_SYMBOLS[pState.at(0, 1)] == 'r' || MESSAGE_SYMBOLS[pState.at(0, 1)] == 'R') && 
+            (MESSAGE_SYMBOLS[pState.at(0, 3)] == 'r' || MESSAGE_SYMBOLS[pState.at(0, 3)] == 'R') &&
+            (MESSAGE_SYMBOLS[pState.at(1, 2)] == 'r' || MESSAGE_SYMBOLS[pState.at(1, 2)] == 'R')) {
+            nbRed++;
+        } 
     }
+    else {
+        for(int i=0;i<8;i++) {
+            for(int j=0;j<8;j++) {
+                if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'r')
+                    nbRed += 1;
+                else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'R')
+                    nbRed += 4;
+                else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'w')
+                    nbWhite += 1;
+                else if(MESSAGE_SYMBOLS[pState.at(i, j)] == 'W')
+                    nbWhite += 4;
+            }
+        }
+    }
+
+    
+
+    
+    if(player == CELL_RED)
+        return (nbRed-nbWhite)/this->countPieces(pState);
+    else
+        return (nbWhite-nbRed)/this->countPieces(pState);
 }
 
-std::string Player::boardToString(const GameState & pState) const {
-    std::stringstream ss;
-    for(unsigned i=0;i<pState.cSquares;i++) {
-        ss << SIMPLE_TEXT[pState.at(i)];
+
+
+
+double Player::isInHistory(const GameState & pState, unsigned depth) {
+    std::string message = this->boardToMessage(pState);
+
+    if(this->history[depth].find(message) != this->history[depth].end()) {
+        return this->history[depth][message];
     }
 
-    return ss.str();
+    return MINIMUM;
 }
+
 
 double Player::alphaBeta(const GameState &pState, const uint8_t & player, unsigned depth, double alpha, double beta, bool currentPlayer) {
     //IF NO DEPTH ONLY COMPUTE SIMPLE HEURISTIC
@@ -122,20 +236,13 @@ double Player::alphaBeta(const GameState &pState, const uint8_t & player, unsign
 
         //ALPHA
         double max = MINIMUM;
-        for(unsigned i = 0; i < heuristicsIdx.size(); ++i) {
-            tmp = MINIMUM;
-            /*tmp = isInHistory(lNextStates[heuristicsIdx[i]], depth-1);
+        for(unsigned i = 0; i < sizeSolution; ++i) {
+            tmp = isInHistory(lNextStates[heuristicsIdx[i]], depth-1);
             if(tmp == MINIMUM) {
-                
-                this->history[depth-1][this->boardToString(lNextStates[heuristicsIdx[i]])] = tmp;
-            }*/
-            tmp = alphaBeta(lNextStates[heuristicsIdx[i]], player, depth-1, alpha, beta, !currentPlayer);
-            /*if(!this->stateExist(player, lNextStates[heuristicsIdx[i]])) {
                 tmp = alphaBeta(lNextStates[heuristicsIdx[i]], player, depth-1, alpha, beta, !currentPlayer);
-                this->createState(player, lNextStates[heuristicsIdx[i]], tmp);
-            } else {
-                tmp = this->getGainForState(player, lNextStates[heuristicsIdx[i]]);
-            }*/
+                this->history[depth-1][this->boardToMessage(lNextStates[heuristicsIdx[i]])] = tmp;
+            }
+            
             if(tmp > max) {
                 max = tmp;
                 if(max > alpha)
@@ -163,19 +270,12 @@ double Player::alphaBeta(const GameState &pState, const uint8_t & player, unsign
         //BETA
         double min = MAXIMUM;
         for(unsigned i = 0; i < sizeSolution; ++i) {
-            tmp = MAXIMUM;
-            /*tmp = isInHistory(lNextStates[heuristicsIdx[i]], depth-1);
+            tmp = isInHistory(lNextStates[heuristicsIdx[i]], depth-1);
             if(tmp == MINIMUM) {
                 tmp = alphaBeta(lNextStates[heuristicsIdx[i]], player, depth-1, alpha, beta, !currentPlayer);
-                this->history[depth-1][this->boardToString(lNextStates[heuristicsIdx[i]])] = tmp;
-            }*/
-            tmp = alphaBeta(lNextStates[heuristicsIdx[i]], player, depth-1, alpha, beta, !currentPlayer);
-            /*if(!this->stateExist(pState.getNextPlayer(), lNextStates[heuristicsIdx[i]])) {
-                tmp = alphaBeta(lNextStates[heuristicsIdx[i]], player, depth-1, alpha, beta, !currentPlayer);
-                this->createState(pState.getNextPlayer(), lNextStates[heuristicsIdx[i]], tmp);
-            } else {
-                tmp = this->getGainForState(pState.getNextPlayer(), lNextStates[heuristicsIdx[i]]);
-            }*/
+                this->history[depth-1][this->boardToMessage(lNextStates[heuristicsIdx[i]])] = tmp;
+            }
+
             if(tmp < min) {
                 min = tmp;
                 if(min < beta)
@@ -190,69 +290,9 @@ double Player::alphaBeta(const GameState &pState, const uint8_t & player, unsign
     }
 }
 
-bool Player::stateExist(uint8_t player, GameState state) const {
-    std::string grid = this->boardToString(state);
-    return this->states.find(player)->second.find(grid) != this->states.find(player)->second.end();
-}
-
-double Player::getGainForState(uint8_t player, GameState state) const {
-    std::string grid = this->boardToString(state);
-    return this->states.find(player)->second.find(grid)->second;
-}
-
-void Player::createState(uint8_t player, GameState state, double value) {
-    std::string grid = this->boardToString(state);
-    this->states.find(player)->second.insert(std::pair<std::string, double>(grid, value));
-}
-
-/*GameState Player::play(const GameState &pState,const Deadline &pDue)
-{    
-    this->states[CELL_RED].clear();
-    this->states[CELL_WHITE].clear();
-
-    unsigned depth = 6;
-
-    if(countPieces(pState) <= 4) {
-        depth = 8;
-    }
-
-    //POSSIBLE MOVES
-    std::vector<GameState> lNextStates;
-    pState.findPossibleMoves(lNextStates);
-
-
-    if (lNextStates.size() == 0) {
-        std::cerr << "NO MOVE" << std::endl;
-        return GameState(pState, Move());
-    }
-
-    double alpha = double(MINIMUM);
-    double beta = double(MAXIMUM);
-
-    GameState bestMove;
-    for(unsigned i = 0; i < lNextStates.size(); ++i) {
-        double tmp = alphaBeta(lNextStates[i], pState.getNextPlayer(), depth, alpha, beta, false);
-        if(tmp > alpha) {
-            bestMove = lNextStates[i];
-            alpha = tmp;
-        }
-    }
-
-
-    return bestMove;
-    //return lNextStates[rand() % lNextStates.size()];
-}*/
-
 GameState Player::play(const GameState &pState,const Deadline &pDue)
 {    
-    this->states[CELL_RED].clear();
-    this->states[CELL_WHITE].clear();
-
-    unsigned depth = 6;
-
-    if(countPieces(pState) <= 4) {
-        depth = 8;
-    }
+    unsigned depth = 8;
 
     //POSSIBLE MOVES
     std::vector<GameState> lNextStates;
@@ -266,12 +306,15 @@ GameState Player::play(const GameState &pState,const Deadline &pDue)
 
     double alpha = double(MINIMUM);
     double beta = double(MAXIMUM);
+
+    double max = MINIMUM;
     GameState bestMove;
     for(unsigned i = 0; i < lNextStates.size(); ++i) {
         double tmp = alphaBeta(lNextStates[i], pState.getNextPlayer(), depth, alpha, beta, false);
-        if(tmp > alpha) {
+        if(tmp > max) {
+            max = tmp;
             bestMove = lNextStates[i];
-            alpha = tmp;
+            alpha = max;
         }
     }
 
